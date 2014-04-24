@@ -3,6 +3,7 @@ package org.guacommunity;
 import java.awt.Dialog;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.prefs.Preferences;
@@ -20,28 +21,31 @@ import net.miginfocom.swing.MigLayout;
 
 public class Settings {
 
-	public static final String SAVE_FILE_NAME = "save.dat";
+	private final Preferences settingsPrefs;
 	private static final String SAVE_FILE_KEY = "SAVE_FILE";
 	private static final String BACKUP_DIRECTORY_KEY = "BACKUP_DIRECTORY";
 	
 	private Path saveFilePath;
 	private Path backupDirectoryPath;
 	
-	private JDialog dialog;
-	private JPanel buttonPanel;
+	private final JDialog dialog;
+	private final JPanel contentPane;
+	private final JPanel buttonPanel;
+	private final JLabel saveFileLabel, backupDirectoryLabel;
+	private final JTextField saveFileField, backupDirectoryField;
+	private final JButton saveFileButton, backupDirectoryButton, applyButton, cancelButton;
+	private final JFileChooser saveFileChooser, backupDirectoryChooser;
 	
-	private JPanel contentPane;
-	private JLabel saveFileLabel, backupDirectoryLabel;
-	private JTextField saveFileField, backupDirectoryField;
-	private JButton saveFileButton, backupDirectoryButton, applyButton, cancelButton;
-	private JFileChooser saveFileChooser, backupDirectoryChooser;
-	
-	private final Preferences settingsPrefs;
-	
+	/**
+	 * Creates the settings dialog. The user sets application preferences here.
+	 */
 	public Settings(JFrame parentFrame) {
 		settingsPrefs = Preferences.userNodeForPackage(getClass());
 		
-		dialog = new JDialog(parentFrame, "Settings", Dialog.ModalityType.APPLICATION_MODAL);
+		dialog = new JDialog(
+			parentFrame,
+			Assets.APP_NAME + " Settings",
+			Dialog.ModalityType.APPLICATION_MODAL);
 		dialog.setResizable(false);
 		contentPane = new JPanel();
 		dialog.setContentPane(contentPane);
@@ -50,7 +54,7 @@ public class Settings {
 		saveFileChooser.setFileFilter(new FileNameExtensionFilter("DAT file", "dat"));
 		saveFileChooser.setFileHidingEnabled(false);
 		
-		saveFileLabel = new JLabel("save.dat File: ");
+		saveFileLabel = new JLabel("save.dat File Location: ");
 		saveFileField = new JTextField(30);
 		saveFileField.setEditable(false);
 		saveFileButton = new JButton(Assets.FOLDER_ICON);
@@ -130,6 +134,16 @@ public class Settings {
 	}
 	
 	/**
+	 * Returns whether the settings from preferences are valid.
+	 */
+	public boolean isValid() {
+		File saveFile = new File(getSaveFilePath().toUri());
+		File backupDirectory = new File(getBackupDirectoryPath().toUri());
+		
+		return (saveFile.exists() && saveFile.isFile() && backupDirectory.exists() && backupDirectory.isDirectory());
+	}
+	
+	/**
 	 * Sets the save file path on the dialog form (does not persist to preferences).
 	 */
 	private void setSaveFilePath(Path savePath) {
@@ -171,6 +185,7 @@ public class Settings {
 	private void ok() {
 		settingsPrefs.put(SAVE_FILE_KEY, saveFilePath.toString());
 		settingsPrefs.put(BACKUP_DIRECTORY_KEY, backupDirectoryPath.toString());
+		GuacaSave.setButtonOperability();
 		dialog.setVisible(false);
 	}
 	

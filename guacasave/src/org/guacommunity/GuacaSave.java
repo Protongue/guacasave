@@ -1,5 +1,8 @@
 package org.guacommunity;
 
+import java.awt.BorderLayout;
+import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
@@ -9,6 +12,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 
+import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
@@ -18,29 +23,44 @@ import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.SwingConstants;
+import javax.swing.UIManager;
+import javax.swing.UnsupportedLookAndFeelException;
+import javax.swing.border.BevelBorder;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
 public class GuacaSave {
 	
 	private static JFrame mainWindow;
 	private static Settings settings;
+	private static JButton saveButton, loadButton;
+	private static JLabel statusLabel;
 	
 	/**
 	 * Initializes and launches the application.
 	 */
 	public static void main(String[] args) {
 		final JPanel contentPane;
-		final JButton saveButton, loadButton;
+		final JPanel buttonPane;
 		final JFileChooser loadChooser;
 		final CopyOption[] copyOptions;
 		
+		// Try to make the application look like the native OS
+		try {
+			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+		} catch (ClassNotFoundException | InstantiationException
+				| IllegalAccessException | UnsupportedLookAndFeelException e) {
+			// Can't load native OS look and feel, move along!
+		}
+		
 		// Set the application's frame (main window)
 		mainWindow = new JFrame(Assets.APP_NAME);
+		mainWindow.setIconImage(Assets.SKULL_ICON.getImage());
 		mainWindow.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		mainWindow.setResizable(false);
 		
 		// Set the frame's content pane
-		contentPane = new JPanel();
+		contentPane = new JPanel(new BorderLayout());
 		mainWindow.setContentPane(contentPane);
 		
 		// Create settings
@@ -48,6 +68,9 @@ public class GuacaSave {
 		
 		// Set the frame's menu bar
 		createMenuBar();
+		
+		// Set the frame's status bar
+		createStatusBar();
 		
 		// Set file copy options to overwrite and copy attributes
 		copyOptions = new CopyOption[] {
@@ -57,6 +80,7 @@ public class GuacaSave {
 		
 		// Set the save button
 		saveButton = new JButton("Save...");
+		saveButton.setPreferredSize(new Dimension(110, 60));
 		saveButton.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
@@ -106,6 +130,7 @@ public class GuacaSave {
 								if (saveBackup) {
 									try {
 										Files.copy(settings.getSaveFilePath(), fullBackupPath, copyOptions);
+										setStatusMessage("Saved " + fullBackupPath.getFileName());
 									} catch (IOException ioe) {
 										JOptionPane.showMessageDialog(
 											mainWindow,
@@ -121,13 +146,13 @@ public class GuacaSave {
 				}				
 			}
 		});
-		contentPane.add(saveButton);
 		
 		// Set the load button
 		loadChooser = new JFileChooser();
 		loadChooser.setFileFilter(new FileNameExtensionFilter("DAT file", "dat"));
 		loadChooser.setFileHidingEnabled(false);
 		loadButton = new JButton("Load...");
+		loadButton.setPreferredSize(new Dimension(110, 60));
 		loadButton.addActionListener(new ActionListener() {
 
 			@Override
@@ -138,6 +163,7 @@ public class GuacaSave {
 				if (returnVal == JFileChooser.APPROVE_OPTION) {
 					try {
 						Files.copy(loadChooser.getSelectedFile().toPath(), settings.getSaveFilePath(), copyOptions);
+						setStatusMessage("Loaded " + loadChooser.getSelectedFile().getName());
 					} catch (IOException ioe) {
 						JOptionPane.showMessageDialog(
 							mainWindow,
@@ -150,11 +176,21 @@ public class GuacaSave {
 			}
 			
 		});
-		contentPane.add(loadButton);
+
+		// Add the buttons to the window's content
+		buttonPane = new JPanel();
+		buttonPane.setBorder(BorderFactory.createEmptyBorder(8,8,8,8));
+		buttonPane.add(saveButton);
+		buttonPane.add(loadButton);
+		contentPane.add(buttonPane, BorderLayout.NORTH);
 		
 		// Display the frame
 		mainWindow.pack();
 		mainWindow.setVisible(true);
+		
+		// Set button operability
+		setButtonOperability();
+		
 	}
 	
 	/**
@@ -172,12 +208,10 @@ public class GuacaSave {
 		
 		settingsItem = new JMenuItem("Settings");
 		settingsItem.addActionListener(new ActionListener() {
-
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				settings.show();
 			}
-			
 		});
 		fileMenu.add(settingsItem);
 		
@@ -230,5 +264,47 @@ public class GuacaSave {
 		menuBar.add(helpMenu);
 		
 		mainWindow.setJMenuBar(menuBar);
+	}
+	
+	/**
+	 * Creates a status bar at the bottom of the main window.
+	 */
+	private static void createStatusBar() {
+		JPanel statusBar = new JPanel();
+		statusBar.setBorder(new BevelBorder(BevelBorder.LOWERED));
+		statusBar.setPreferredSize(new Dimension(mainWindow.getWidth(), 25));
+		statusBar.setLayout(new BoxLayout(statusBar, BoxLayout.X_AXIS));
+		
+		statusLabel = new JLabel();
+		statusLabel.setBorder(BorderFactory.createEmptyBorder(0, 3, 0, 0));
+		statusLabel.setFont(new Font("SansSerif", Font.PLAIN, 12));
+		statusLabel.setHorizontalAlignment(SwingConstants.LEFT);
+		statusBar.add(statusLabel);
+		
+		mainWindow.add(statusBar, BorderLayout.SOUTH);
+	}
+	
+	/**
+	 * Displays a message on the status bar.
+	 */
+	private static void setStatusMessage(String message) {
+		statusLabel.setText(message);
+	}
+	
+	/**
+	 * Sets whether the save/load buttons are enabled or not based on settings validity.
+	 */
+	public static void setButtonOperability() {
+		boolean enabled = settings.isValid();
+		
+		saveButton.setEnabled(enabled);
+		loadButton.setEnabled(enabled);
+		
+		if (enabled) {
+			setStatusMessage("Ready");
+		} else {
+			setStatusMessage("Not Ready : Assign File > Settings");
+		}
+		
 	}
 }
