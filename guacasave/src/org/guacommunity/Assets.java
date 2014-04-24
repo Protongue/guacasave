@@ -1,15 +1,12 @@
 package org.guacommunity;
 
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.io.InputStream;
+import java.util.Scanner;
 
 import javax.swing.ImageIcon;
 
 public final class Assets {
 	
-	static Assets assets = new Assets();
-
 	public static final String APP_NAME = "GuacaSave";
 	public static final String VERSION_NUMBER = "0.1a";
 	
@@ -25,11 +22,13 @@ public final class Assets {
 	 */
 	private static String getFileText(String fileName) {
 		String fileText;
-		try {
-			fileText = new String(Files.readAllBytes(Paths.get(Assets.class.getResource(fileName).toURI())), StandardCharsets.UTF_8);
-		} catch (Exception e) {
-			fileText = fileName + " could not be loaded!";
-		}
+		
+		InputStream is = Assets.class.getResourceAsStream(fileName);
+		Scanner scanner = new Scanner(is);
+		scanner.useDelimiter("\\Z");
+		fileText = scanner.next();
+		scanner.close();
+		
 		fileText = fileText.replace("{{APP_NAME}}", APP_NAME);
 		fileText = fileText.replace("{{VERSION_NUMBER}}", VERSION_NUMBER);
 		
